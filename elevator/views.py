@@ -163,16 +163,22 @@ class ElevatorCallViewSet(viewsets.ModelViewSet):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
   @action(detail=False, methods=['post'])
   def create_call(self, request, *args, **kwargs):
-    ### TODO: Add number of floors of the elevator validation - The validation must check the origin and the target
-    elevator_id = request.data.get('elevator')
-    elevator = Elevator.objects.get(pk=elevator_id)
+        elevator_id = request.data.get('elevator')
+        try:
+            elevator = Elevator.objects.get(pk=elevator_id)
+            target_floor = request.data.get('target_floor')
+            origin_floor = request.data.get('origin_floor')
 
-    if request.data.get('target_floor') > elevator.number_of_floors or request.data.get('target_floor') < 0:
-       return Response({'Status': 'Target floor is out of bounds'}, status=status.HTTP_400_BAD_REQUEST)
-    elif request.data.get('origin_floor') > elevator.number_of_floors or request.data.get('origin_floor') < 0:
-       return Response({'Status': 'Origin floor is out of bounds'}, status=status.HTTP_400_BAD_REQUEST)
+            if not (0 <= origin_floor <= elevator.number_of_floors and 0 <= target_floor <= elevator.number_of_floors):
+                return Response({'Status': 'Origin or target floor is out of bounds'}, status=status.HTTP_400_BAD_REQUEST)
+            serializer = ElevatorCallSerializer(data=request.data)
+            if serializer.is_valid():
+                self.perform_create(serializer)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    return super().create(request, *args, **kwargs)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Elevator.DoesNotExist:
+            return Response({'Status': 'Elevator not found'}, status=status.HTTP_404_NOT_FOUND)
   @action(detail=False, methods=['post'])
   def update_call(self, request, *args, **kwargs):
     try:
@@ -180,19 +186,16 @@ class ElevatorCallViewSet(viewsets.ModelViewSet):
         call = ElevatorCall.objects.get(pk=call_id)
         serializer = ElevatorCallSerializer(call, data=request.data)
         if serializer.is_valid():
-           serializer.save()
-           return Response(serializer.data, status=status.HTTP_200_OK)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except ElevatorCall.DoesNotExist:
         return Response({'error': 'ElevatorCall not found'}, status=status.HTTP_404_NOT_FOUND)
   @action(detail=False, methods=['get'])
   def get_calls(self, request, *args, **kwargs):
-    try:
         calls = ElevatorCall.objects.all()
         serializer = ElevatorCallSerializer(calls, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    except ElevatorCall.DoesNotExist:
-        return Response({'error': 'Calls not found'}, status=status.HTTP_404_NOT_FOUND)
 
 class PersonViewSet(viewsets.ModelViewSet):
   queryset = Person.objects.all()
@@ -202,7 +205,11 @@ class PersonViewSet(viewsets.ModelViewSet):
   """
   @action(detail=False, methods=['post'])
   def create_person(self, request, *args, **kwargs):
-    return super().create(request, *args, **kwargs)
+   serializer = PersonSerializer(data=request.data)
+   if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+   return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
   @action(detail=False, methods=['delete'])
   def delete_person(self, request, *args, **kwargs):
     try:
