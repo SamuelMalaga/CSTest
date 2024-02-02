@@ -4,6 +4,7 @@ from elevator.serializers import ElevatorCallSerializer, ElevatorSerializer, Per
 from rest_framework import permissions, viewsets,status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+import random
 import time
 from datetime import datetime, timedelta
 
@@ -76,7 +77,6 @@ class ElevatorViewSet(viewsets.ModelViewSet):
         floors_traveled += self.move_elevator(elevator.current_floor,elevator_call.target_floor,elevator)
         movement_end_time = datetime.now()
         time_delta = movement_end_time -movement_start_time
-        #return Response({'Status': f'Finished the elevator movement, floors traveled {floors_traveled} with a time delta of {time_delta}'}, status=status.HTTP_200_OK)
     elif elevator_call.origin_floor < elevator.current_floor:
         print(f"The elevator is above the requested floor {elevator_call.origin_floor}, it is currently in floor {elevator.current_floor}, mooving down to get to the origin floor")
         floors_traveled += self.move_elevator(elevator.current_floor,elevator_call.origin_floor,elevator)
@@ -84,13 +84,11 @@ class ElevatorViewSet(viewsets.ModelViewSet):
         floors_traveled += self.move_elevator(elevator.current_floor,elevator_call.target_floor,elevator)
         movement_end_time = datetime.now()
         time_delta = movement_end_time -movement_start_time
-        #return Response({'Status': f'Finished the elevator movement, floors traveled {floors_traveled} with a time delta of {time_delta}'}, status=status.HTTP_200_OK)
     elif elevator.current_floor == elevator_call.origin_floor:
         print(f"The elevator is already on the requested floor | Floor number {elevator.current_floor}")
         floors_traveled += self.move_elevator(elevator.current_floor,elevator_call.target_floor,elevator)
         movement_end_time = datetime.now()
         time_delta = movement_end_time -movement_start_time
-        #return Response({'Status': f'Finished the elevator movement, floors traveled {floors_traveled} with a time delta of {time_delta}'}, status=status.HTTP_200_OK)
     new_movement = Movement.objects.create(
         elevator = elevator,
         person = person,
@@ -102,8 +100,8 @@ class ElevatorViewSet(viewsets.ModelViewSet):
         call_origin_floor = elevator_call.origin_floor,
         call_target_floor = elevator_call.target_floor,
         total_traveled_floors = floors_traveled,
-        total_movement_time =time_delta,
-        avg_movement_speed = 0
+        total_movement_time_ms =time_delta,
+        avg_movement_speed_floor_by_seconds = self.calculate_avg_movement_speed(floors_traveled,time_delta.total_seconds())
     )
     movement_serializer = MovementSerializer(new_movement)
     return Response({'Status': f'Finished the elevator movement, the execution genereted the following movement: {movement_serializer.data}'}, status=status.HTTP_200_OK)
@@ -121,7 +119,7 @@ class ElevatorViewSet(viewsets.ModelViewSet):
     floor = elevator.current_floor
     while floor != target_floor:
         print(f"mooving up to floor {target_floor}, currently in floor {floor}")
-        time.sleep(elevator.elevator_speed)
+        time.sleep(random.uniform(0, elevator.elevator_max_speed))
         floor +=1
     print(f"arrived at target floor {target_floor}")
     elevator.current_floor = floor
@@ -131,14 +129,16 @@ class ElevatorViewSet(viewsets.ModelViewSet):
     floor = elevator.current_floor
     while floor != target_floor:
         print(f"mooving down to floor {target_floor}, currently in floor {floor}")
-        time.sleep(elevator.elevator_speed)
+        time.sleep(random.uniform(0, elevator.elevator_max_speed))
         floor -=1
     print(f"arrived at target floor {target_floor}")
     elevator.current_floor = floor
     elevator.save()
     return Response({'Status': 'Arrived at the target floor'}, status=status.HTTP_200_OK)
-
-
+  def calculate_avg_movement_speed(self,total_traveled_floors,total_movement_time):
+    print('Traveled time in seconds', total_movement_time, 'total_traveled_floors', total_traveled_floors)
+    average_speed = total_traveled_floors / total_movement_time
+    return round(average_speed,4)
 class ElevatorCallViewSet(viewsets.ModelViewSet):
   queryset = ElevatorCall.objects.all()
   serializer_class = ElevatorCallSerializer
@@ -273,8 +273,8 @@ class MovementViewSet(viewsets.ModelViewSet):
         return Response({'message': 'Movement deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
     except Movement.DoesNotExist:
         return Response({'error': 'Movement not found'}, status=status.HTTP_404_NOT_FOUND)
-    # except Exception as e:
-    #     return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
   @action(detail=False, methods=['post'])
   def create_movement(self, request, *args, **kwargs):

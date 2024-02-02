@@ -11,7 +11,7 @@ class Person(models.Model):
 
 class Elevator(models.Model):
 
-    elevator_speed = models.IntegerField()
+    elevator_max_speed = models.FloatField(default=4)
     number_of_floors = models.IntegerField(default=10)
     current_floor = models.IntegerField()
 
@@ -36,4 +36,4 @@ class Movement(models.Model):
     call_target_floor = models.IntegerField(default=0)
     total_traveled_floors = models.IntegerField(default=0)
     total_movement_time_ms = models.DurationField(default=timedelta())
-    avg_movement_speed = models.IntegerField(default=0)
+    avg_movement_speed_floor_by_seconds = models.FloatField(default=0)

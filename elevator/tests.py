@@ -60,22 +60,21 @@ class PersonViewSetTestCase(TestCase):
 class ElevatorCallViewSetTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.elevator = Elevator.objects.create(number_of_floors=10,elevator_speed = 1, current_floor=0)
+        self.elevator = Elevator.objects.create(number_of_floors=10,elevator_max_speed = 1, current_floor=0)
         self.person = Person.objects.create(name= 'John Doe', age= 30)
         self.call_data = {'elevator': self.elevator.id, 'origin_floor': 3, 'target_floor': 7}
 
     def test_create_call(self):
         response = self.client.post('/elevator_api/elevator_calls/create_call/', data=self.call_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        #self.assertEqual(ElevatorCall.objects.count(), 1)
 
     def test_create_call_invalid_target_floor(self):
-        self.call_data['target_floor'] = 12  # Set an invalid target floor
+        self.call_data['target_floor'] = 12
         response = self.client.post('/elevator_api/elevator_calls/create_call/', data=self.call_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_create_call_invalid_origin_floor(self):
-        self.call_data['origin_floor'] = -1  # Set an invalid origin floor
+        self.call_data['origin_floor'] = -1
         response = self.client.post('/elevator_api/elevator_calls/create_call/', data=self.call_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -123,13 +122,12 @@ class ElevatorCallViewSetTestCase(TestCase):
 class ElevatorViewSetTestCase(TestCase):
 
     def setUp(self):
-        # Create some initial elevators for testing
         self.client = APIClient()
-        self.elevator1 = Elevator.objects.create(number_of_floors=10, elevator_speed=2.0, current_floor=0)
-        self.elevator_data = {'number_of_floors':10,'elevator_speed':2,'current_floor':0}
+        self.elevator1 = Elevator.objects.create(number_of_floors=10, elevator_max_speed=2.0, current_floor=0)
+        self.elevator_data = {'number_of_floors':10,'elevator_max_speed':2,'current_floor':0}
 
     def test_get_elevator(self):
-        elevator = Elevator.objects.create(number_of_floors=10, elevator_speed=2.0, current_floor=0)
+        elevator = Elevator.objects.create(number_of_floors=10, elevator_max_speed=2.0, current_floor=0)
         response = self.client.get(f'/elevator_api/elevator/get_elevator/', {'id': elevator.id}, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['id'], elevator.id)
@@ -140,7 +138,7 @@ class ElevatorViewSetTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_delete_elevator(self):
-        elevator = Elevator.objects.create(number_of_floors=10, elevator_speed=2.0, current_floor=0)
+        elevator = Elevator.objects.create(number_of_floors=10, elevator_max_speed=2.0, current_floor=0)
         response = self.client.delete(f'/elevator_api/elevator/delete_elevator/', data={'id': elevator.id},format='json')
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(Elevator.objects.count(),1)
@@ -158,34 +156,31 @@ class ElevatorViewSetTestCase(TestCase):
         self.assertEqual(Elevator.objects.count(),2)
 
     def test_update_elevator(self):
-        elevator = Elevator.objects.create(number_of_floors= 8, elevator_speed=3.0, current_floor=0)
-        updated_data = {'id': elevator.id, 'number_of_floors': 9, 'elevator_speed': 2, 'current_floor':5}
+        elevator = Elevator.objects.create(number_of_floors= 8, elevator_max_speed=3.0, current_floor=0)
+        updated_data = {'id': elevator.id, 'number_of_floors': 9, 'elevator_max_speed': 2, 'current_floor':5}
         response = self.client.post('/elevator_api/elevator/update_elevator/', data=updated_data,format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         elevator.refresh_from_db()
         self.assertEqual(elevator.number_of_floors, 9)
-        self.assertEqual(elevator.elevator_speed, 2)
+        self.assertEqual(elevator.elevator_max_speed, 2)
 
     def test_update_elevator_not_found(self):
-        data = {'id': 9999, 'number_of_floors': 8, 'elevator_speed': 3.0, 'current_floor':0}
+        data = {'id': 9999, 'number_of_floors': 8, 'elevator_max_speed': 3.0, 'current_floor':0}
         response = self.client.post('/elevator_api/elevators/update_elevator/', data)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_get_elevators(self):
-        Elevator.objects.create(number_of_floors= 8, elevator_speed=3.0, current_floor=0)
-        Elevator.objects.create(number_of_floors= 9, elevator_speed=5.0, current_floor=1)
+        Elevator.objects.create(number_of_floors= 8, elevator_max_speed=3.0, current_floor=0)
+        Elevator.objects.create(number_of_floors= 9, elevator_max_speed=5.0, current_floor=1)
         response = self.client.get('/elevator_api/elevator/get_elevators/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         #3 because of the sel.elevator1 created
         self.assertEqual(len(response.data), 3)
 
-
-#3 failures ->  delete_movement, get_movement, update_movement
 class MovementViewSetTestCase(TestCase):
 
     def setUp(self):
-        # Create some initial instances for testing
-        self.elevator = Elevator.objects.create(number_of_floors=10, elevator_speed=2.0,current_floor=0)
+        self.elevator = Elevator.objects.create(number_of_floors=10, elevator_max_speed=2.0,current_floor=0)
         self.person = Person.objects.create(name="John Doe", age=30)
         self.elevator_call = ElevatorCall.objects.create(
             origin_floor=2, target_floor=7, elevator=self.elevator, person=self.person
@@ -200,7 +195,7 @@ class MovementViewSetTestCase(TestCase):
             call_target_floor=7,
             total_traveled_floors=5,
             total_movement_time_ms=timedelta(minutes=2),
-            avg_movement_speed=2,
+            avg_movement_speed_floor_by_seconds=2,
         )
 
     def test_get_movement(self):
@@ -224,13 +219,12 @@ class MovementViewSetTestCase(TestCase):
             call_target_floor=7,
             total_traveled_floors=5,
             total_movement_time_ms=timedelta(minutes=2),
-            avg_movement_speed=2,
+            avg_movement_speed_floor_by_seconds=2,
         )
         response = self.client.delete(f'/elevator_api/movement/delete_movement/?id={movement.id}', format='json')
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(Movement.objects.count(),1)
 
-    #Not working returning status 415
     def test_delete_movement_not_found(self):
 
         response = self.client.delete('/elevator_api/movement/delete_movement/?9999', format='json')
@@ -248,7 +242,7 @@ class MovementViewSetTestCase(TestCase):
             'call_target_floor': 8,
             'total_traveled_floors': 5,
             'total_movement_time_ms': 120000,  # 2 minutes in milliseconds
-            'avg_movement_speed': 2,
+            'avg_movement_speed_floor_by_seconds': 2,
         }
         response = self.client.post('/elevator_api/movement/create_movement/', data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -265,10 +259,10 @@ class MovementViewSetTestCase(TestCase):
             call_target_floor=7,
             total_traveled_floors=5,
             total_movement_time_ms=timedelta(minutes=2),
-            avg_movement_speed=2,
+            avg_movement_speed_floor_by_seconds=2,
         )
         updated_data = {
-            'avg_movement_speed': 99,
+            'avg_movement_speed_floor_by_seconds': 99,
             'elevator':self.elevator.id,
             'person': self.person.id,
             'elevator_call': self.elevator_call.id
@@ -276,7 +270,7 @@ class MovementViewSetTestCase(TestCase):
         response = self.client.post(f'/elevator_api/movement/update_movement/?id={movement.id}', data=updated_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         movement.refresh_from_db()
-        self.assertEqual(movement.avg_movement_speed, 99)
+        self.assertEqual(movement.avg_movement_speed_floor_by_seconds, 99)
 
     def test_update_movement_not_found(self):
 
@@ -295,7 +289,7 @@ class MovementViewSetTestCase(TestCase):
             call_target_floor=7,
             total_traveled_floors=5,
             total_movement_time_ms=timedelta(minutes=2),
-            avg_movement_speed=2,
+            avg_movement_speed_floor_by_seconds=2,
         )
         movement2 = Movement.objects.create(
             elevator=self.elevator,
@@ -307,7 +301,7 @@ class MovementViewSetTestCase(TestCase):
             call_target_floor=7,
             total_traveled_floors=5,
             total_movement_time_ms=timedelta(minutes=2),
-            avg_movement_speed=2,
+            avg_movement_speed_floor_by_seconds=2,
         )
         response = self.client.get('/elevator_api/movement/get_movements/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
