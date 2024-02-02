@@ -1,6 +1,7 @@
 # myapp/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from elevator import views
 from .views import PersonViewSet,ElevatorCallViewSet,MovementViewSet,ElevatorViewSet
 
 router = DefaultRouter()
@@ -13,5 +14,6 @@ router.register(r'person', PersonViewSet, basename='person')
 
 urlpatterns = [
     path('', include(router.urls)),
-    #path('person/delete_person/<int:pk>/', PersonViewSet.as_view({'delete': 'delete_person'}), name='delete_person'),
+    # <-----Elevator related urls----->
+    #path('elevator_api/person/get_person/', views.PersonViewSet.get_person, name='get_person'),
 ]
